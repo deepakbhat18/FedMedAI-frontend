@@ -45,7 +45,13 @@ const VITALS = [
 const SectionLabel = ({ children }) => (
   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-ghost)', marginBottom: 12 }}>{children}</div>
 );
-
+const getDiseaseIcon = (type, size = 20) => {
+  return (
+    <span style={{ fontSize: size }}>
+      {D_ICONS[type] || '⚕️'}
+    </span>
+  );
+};
 const DiseaseCard = ({ pred, index }) => {
   const cfg = RISK[pred.risk_level] || RISK.MINIMAL;
   const pct = (pred.confidence * 100).toFixed(1);
