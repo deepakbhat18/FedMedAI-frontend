@@ -4,7 +4,7 @@
 
 The FedMed AI frontend is a single-page web application (SPA) built for healthcare practitioners and hospital administrators to evaluate multi-disease clinical risks, monitor federated model convergence, and manage patient registries under strict hospital isolation.
 
-For the system-wide architecture and backend orchestrator details, refer to the [Root README](https://github.com/deepakbhat18/FedMedAI-backend/).
+For the system-wide architecture and backend orchestrator details, refer to the [Root File](https://github.com/deepakbhat18/FedMedAI-backend/).
 
 ---
 
