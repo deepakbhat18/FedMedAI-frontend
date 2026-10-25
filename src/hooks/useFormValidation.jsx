@@ -58,7 +58,6 @@ export const useFormValidation = () => {
         newErrors[name] =
           `${range.label} must be between ${range.min} and ${range.max} ${range.unit}`;
       } else {
-        
         const normal = NORMAL_RANGES[name];
         if (normal && name === 'bloodPressure' && numVal > 140) {
           newWarnings[name] = `High blood pressure (normal: ${normal} mmHg)`;

@@ -24,5 +24,5 @@ export const getTrainingAnalytics = () => {
   return API.get('/training-logs/analytics');
 };
 export const getMLMetrics = () => {
-  return API.get('/analytics/ml-metrics'); 
+  return API.get('/analytics/ml-metrics');
 };

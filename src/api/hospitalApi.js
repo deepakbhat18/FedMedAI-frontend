@@ -1,5 +1,4 @@
 
-
 import API from './axiosConfig';
 
 export const getAllHospitals = () => {

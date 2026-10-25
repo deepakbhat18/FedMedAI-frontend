@@ -41,7 +41,7 @@ export const MLServiceProvider = ({ children }) => {
   const token = localStorage.getItem('accessToken');
   if (!token) {
     setChecking(false);
-    return; 
+    return;
   }
 
   checkHealth();
@@ -61,7 +61,9 @@ export const MLServiceProvider = ({ children }) => {
       isOnline,
       checking,
       lastChecked,
-      retryCount
+      retryCount,
+      retry: checkHealth,
+      checkHealth
     }}>
       {children}
     </MLServiceContext.Provider>

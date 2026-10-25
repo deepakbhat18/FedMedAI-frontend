@@ -1,80 +1,52 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiCpu, FiZap, FiCheck, FiArrowUp, FiArrowDown, FiShield, FiMinus, FiWifiOff, FiWifi, FiLayers, FiActivity } from 'react-icons/fi';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { motion } from 'framer-motion';
+import {
+  FiCpu, FiZap, FiCheck, FiArrowUp,
+  FiArrowDown, FiShield, FiSettings,
+  FiMinus, FiWifiOff, FiLayers, FiActivity,
+} from 'react-icons/fi';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, Cell,
+} from 'recharts';
 import { getAllModels, triggerTraining } from '../api/modelApi';
 import { getMLMetrics } from '../api/analyticsApi';
 import { toast } from 'react-toastify';
 
-import LiverIcon from '../components/common/LiverIcon';
+const COLORS = ['#0d9488', '#0284c7', '#2563eb', '#8b5cf6', '#f59e0b'];
 
-const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#DC2626', '#7C3AED'];
-const EMOJI  = { heart_disease: '❤️', diabetes: '🩸', kidney_disease: '🫘', liver_disease: null, stroke: '🧠' };
-const getDiseaseIcon = (key, size = 20) => key === 'liver_disease'
-  ? <LiverIcon size={size} style={{ verticalAlign: 'middle' }} />
-  : <span style={{ fontSize: size }}>{EMOJI[key]}</span>;
+const Card = ({ children, className = '', style = {}, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+    className={`bg-white rounded-2xl border border-slate-200/90 shadow-sm ${className}`}
+    style={style}
+  >
+    {children}
+  </motion.div>
+);
 
-const Sk = ({ h = '16px', w = '100%', r = '8px' }) => <div className="shimmer" style={{ height: h, width: w, borderRadius: r }} />;
-
-const ChartTooltip = ({ active, payload, label }) => {
+const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: 'var(--bg-app)', border: '1px solid var(--border-default)', borderRadius: '12px', padding: '12px 16px', boxShadow: 'var(--shadow-md)' }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ width: 8, height: 8, borderRadius: '50%', background: payload[0]?.fill }} />
-        <div className="font-mono" style={{ fontSize: 16, fontWeight: 800, color: payload[0]?.fill }}>{payload[0]?.value?.toFixed(2)}%</div>
-      </div>
+    <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-lg border border-slate-200">
+      <p className="text-xs font-semibold text-slate-500 mb-0.5">{label}</p>
+      <p className="text-sm font-bold font-mono text-slate-900">
+        {payload[0]?.value?.toFixed(2)}%
+      </p>
     </div>
   );
 };
 
-const DiseaseCard = ({ d, index }) => {
-  const color = d.accuracy >= 82 ? 'var(--success)' : d.accuracy >= 75 ? 'var(--primary)' : d.accuracy >= 70 ? 'var(--warning)' : 'var(--danger)';
-  const bg    = d.accuracy >= 82 ? 'var(--success-light)' : d.accuracy >= 75 ? 'var(--primary-light)' : d.accuracy >= 70 ? 'var(--warning-light)' : 'var(--danger-light)';
-  const bdr   = d.accuracy >= 82 ? 'var(--success-mid)'   : d.accuracy >= 75 ? 'var(--primary-mid)'   : d.accuracy >= 70 ? 'var(--warning-mid)'   : 'var(--danger-mid)';
-  return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + index * 0.05, duration: 0.4 }}
-      style={{ padding: '20px', borderRadius: '16px', background: bg, border: `1px solid ${bdr}`, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: 'var(--shadow-sm)' }}>
-            {d.isLiver ? <LiverIcon size={26} /> : d.emoji}
-          </div>
-          <div>
-            <div className="font-heading" style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2 }}>{d.fullName}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{d.name}</div>
-          </div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div className="font-mono" style={{ fontSize: 24, fontWeight: 800, color, letterSpacing: '-0.02em', lineHeight: 1 }}>
-            {d.accuracy > 0 ? `${d.accuracy}%` : '—'}
-          </div>
-          {d.isLive && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 6 }}>
-              <div className="pulse-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} />
-              <span style={{ fontSize: 10, color: 'var(--success)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Live</span>
-            </div>
-          )}
-        </div>
-      </div>
-      {d.accuracy > 0 && (
-        <div style={{ height: 6, borderRadius: 99, background: 'rgba(0,0,0,0.06)', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}>
-          <motion.div initial={{ width: 0 }} animate={{ width: `${d.accuracy}%` }} transition={{ delay: 0.3 + index * 0.05, duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            style={{ height: '100%', borderRadius: 99, background: color }} />
-        </div>
-      )}
-    </motion.div>
-  );
-};
-
-export default function ModelsPage() {
-  const [models, setModels] = useState([]);
+const ModelsPage = () => {
+  const [models,         setModels]         = useState([]);
   const [trainingResult, setTrainingResult] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [training, setTraining] = useState(false);
-  const [mlMetrics, setMlMetrics] = useState(null);
-  const [engine, setEngine] = useState('custom');
+  const [loading,        setLoading]        = useState(true);
+  const [training,       setTraining]       = useState(false);
+  const [mlMetrics,      setMlMetrics]      = useState(null);
+
+  const [engine,    setEngine]    = useState('custom');
   const [numRounds, setNumRounds] = useState(3);
   const [dpEnabled, setDpEnabled] = useState(false);
   const [dpEpsilon, setDpEpsilon] = useState(1.0);
@@ -83,285 +55,523 @@ export default function ModelsPage() {
 
   const loadData = async () => {
     try {
-      const [modelsRes, metricsRes] = await Promise.all([getAllModels(), getMLMetrics().catch(() => null)]);
-      setModels(modelsRes.data.data);
-      if (metricsRes?.data?.success && metricsRes?.data?.data?.disease_metrics) setMlMetrics(metricsRes.data.data);
-    } catch { console.error('Failed to load models'); }
-    finally { setLoading(false); }
+      const [modelsRes, metricsRes] = await Promise.all([
+        getAllModels(),
+        getMLMetrics().catch(() => null),
+      ]);
+      setModels(modelsRes?.data?.data || []);
+      if (metricsRes?.data?.success && metricsRes?.data?.data?.disease_metrics) {
+        setMlMetrics(metricsRes.data.data);
+      }
+    } catch {
+      console.error('Failed to load models');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getDiseaseAccuracies = () => {
     if (mlMetrics?.disease_metrics) {
-      return Object.entries(mlMetrics.disease_metrics).map(([key, value]) => ({
-        name: value.disease_name.replace('Disease','').replace('Chronic ','').trim(),
-        fullName: value.disease_name, emoji: EMOJI[key] || '🏥',
-        accuracy: parseFloat(value.accuracy.toFixed(2)), f1: parseFloat(value.f1_score.toFixed(2)), isLive: true,
-      })).sort((a, b) => b.accuracy - a.accuracy);
+      return Object.entries(mlMetrics.disease_metrics)
+        .map(([key, value]) => ({
+          name: value.disease_name.replace('Disease', '').replace('Chronic ', '').trim(),
+          fullName:  value.disease_name,
+          emoji: { heart_disease: '❤️', diabetes: '🩸', kidney_disease: '🫘', liver_disease: '🫁', stroke: '🧠' }[key] || '🏥',
+          accuracy:  parseFloat(value.accuracy.toFixed(2)),
+          f1:        parseFloat(value.f1_score.toFixed(2)),
+          precision: parseFloat(value.precision.toFixed(2)),
+          recall:    parseFloat(value.recall.toFixed(2)),
+          isLive: true,
+        }))
+        .sort((a, b) => b.accuracy - a.accuracy);
     }
     return [
-      { name: 'Heart',    fullName: 'Heart Disease',   emoji: '❤️', accuracy: 0, isLive: false },
-      { name: 'Kidney',   fullName: 'Kidney Disease',  emoji: '🫘', accuracy: 0, isLive: false },
-      { name: 'Stroke',   fullName: 'Stroke',          emoji: '🧠', accuracy: 0, isLive: false },
-      { name: 'Diabetes', fullName: 'Diabetes',        emoji: '🩸', accuracy: 0, isLive: false },
-      { name: 'Liver',    fullName: 'Liver Disease',   emoji: null,  isLiver: true, accuracy: 0, isLive: false },
+      { name: 'Heart',    fullName: 'Heart Disease',  emoji: '❤️', accuracy: 0, isLive: false },
+      { name: 'Kidney',   fullName: 'Kidney Disease', emoji: '🫘', accuracy: 0, isLive: false },
+      { name: 'Stroke',   fullName: 'Stroke',         emoji: '🧠', accuracy: 0, isLive: false },
+      { name: 'Diabetes', fullName: 'Diabetes',       emoji: '🩸', accuracy: 0, isLive: false },
+      { name: 'Liver',    fullName: 'Liver Disease',  emoji: '🫁', accuracy: 0, isLive: false },
     ];
   };
 
   const handleTriggerTraining = async () => {
-    setTraining(true); setTrainingResult(null);
+    setTraining(true);
+    setTrainingResult(null);
     try {
-      const requestData = { hospitalIds: [1,2,3], epochs: 5, learningRate: 0.01, batchSize: 32, engine, numRounds };
+      const requestData = {
+        hospitalIds: [1, 2, 3],
+        epochs: 5, learningRate: 0.01, batchSize: 32,
+        engine, numRounds,
+      };
       if (dpEnabled) requestData.dpEpsilon = dpEpsilon;
       const res = await triggerTraining(requestData);
       setTrainingResult(res.data.data);
-      toast.success(`FL Round completed using ${engine}!`);
+      toast.success(`FL Round completed using ${engine === 'flower' ? 'Flower' : 'Custom FedAvg'}!`);
       await loadData();
-    } catch (error) { toast.error(error.response?.data?.message || 'Training failed'); }
-    finally { setTraining(false); }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Federated training failed');
+    } finally {
+      setTraining(false);
+    }
   };
 
-  const getPrivacyLabel = eps => {
-    if (eps <= 0.5) return 'MAXIMUM';
-    if (eps <= 1.0) return 'HIGH';
-    if (eps <= 5.0) return 'MODERATE';
-    return 'LOW';
+  const getPrivacyLabel = (eps) => {
+    if (eps <= 0.5) return { label: 'VERY HIGH PRIVACY', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    if (eps <= 1.0) return { label: 'HIGH PRIVACY',      color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    if (eps <= 5.0) return { label: 'BALANCED',          color: 'text-amber-700 bg-amber-50 border-amber-200' };
+    return               { label: 'ACCURACY EMPHASIS', color: 'text-blue-700 bg-blue-50 border-blue-200' };
   };
 
   const diseaseAccuracies = getDiseaseAccuracies();
   const isMLOnline = !!mlMetrics;
 
-  return (
-    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto' }}>
-      
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
-        <div>
-          <h1 className="font-heading" style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: 8 }}>Model Registry</h1>
-          <p style={{ fontSize: 15, color: 'var(--text-muted)' }}>Configure federated training parameters and monitor model lineage.</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderRadius: '12px', background: isMLOnline ? 'var(--success-light)' : 'var(--danger-light)', border: `1px solid ${isMLOnline ? 'var(--success-mid)' : 'var(--danger-mid)'}` }}>
-          {isMLOnline ? <FiWifi size={16} style={{ color: 'var(--success)' }} /> : <FiWifiOff size={16} style={{ color: 'var(--danger)' }} />}
-          <span style={{ fontSize: 13, fontWeight: 700, color: isMLOnline ? '#065F46' : '#991B1B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Engine {isMLOnline ? 'Online' : 'Offline'}</span>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-80">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-9 h-9 rounded-full border-3 border-teal-600 border-t-transparent animate-spin" />
+          <p className="text-xs font-medium text-slate-500">Loading federated models…</p>
         </div>
       </div>
+    );
+  }
 
-      {!isMLOnline && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="alert alert-warning" style={{ marginBottom: 32 }}>
-          <FiWifiOff size={20} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div className="font-heading" style={{ fontSize: 16, fontWeight: 800, color: '#92400E', marginBottom: 4 }}>ML Service Offline</div>
-            <div style={{ fontSize: 14, color: '#78350F', lineHeight: 1.5 }}>Training requires the Python Machine Learning backend. Telemetry and orchestration capabilities are suspended until the service connects.</div>
+  return (
+    <div className="w-full space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between gap-4 flex-wrap"
+      >
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-50 border border-teal-200 text-teal-700">
+              <FiCpu size={20} />
+            </div>
+            FL Models & Training
+          </h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
+            Coordinate federated model rounds across distributed clinical nodes without sharing raw patient data
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border ${
+            isMLOnline ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'
+          }`}>
+            <span className={`w-2 h-2 rounded-full ${isMLOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+            {isMLOnline ? 'ML Engine Connected' : 'ML Engine Disconnected'}
           </div>
-        </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Offline Alert */}
+      {!isMLOnline && (
+        <div className="rounded-2xl px-5 py-4 bg-rose-50 border border-rose-200 flex items-center gap-3">
+          <FiWifiOff size={18} className="text-rose-600 flex-shrink-0" />
+          <p className="text-sm text-rose-800">
+            Python ML Service is currently unreachable. Live disease accuracy metrics cannot be queried until connected.
+          </p>
+        </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '4fr 7fr', gap: 32, marginBottom: 32 }}>
+      {/* Training Configuration */}
+      <Card delay={0.05} className="p-6 sm:p-7">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+            <FiSettings size={18} className="text-teal-600" />
+            Federated Aggregation Configuration
+          </h2>
+          <span className="text-sm text-slate-500">Node Targets: Hospital 1, 2, 3</span>
+        </div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }}
-          className="card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 32 }}>
-          
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* FL Engine */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--primary-light)', border: '1px solid rgba(37,99,235,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FiLayers size={20} style={{ color: 'var(--primary)' }} />
-              </div>
-              <div>
-                <div className="font-heading" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Training Config</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Set parameters for the next FL cycle</div>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 12 }}>Compute Framework</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {[{ id: 'custom', label: 'Custom', desc: 'Internal Engine' }, { id: 'flower', label: 'Flower', desc: 'flwr Framework' }].map(opt => (
-                  <button key={opt.id} onClick={() => setEngine(opt.id)}
-                    style={{ padding: '16px', borderRadius: '12px', textAlign: 'left', background: engine === opt.id ? 'var(--primary-light)' : 'var(--bg-input)', border: `1px solid ${engine === opt.id ? 'var(--primary)' : 'var(--border-default)'}`, cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: engine === opt.id ? 'var(--shadow-sm)' : 'none' }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: engine === opt.id ? 'var(--primary)' : 'var(--text-primary)', marginBottom: 4 }}>{opt.label}</div>
-                    <div style={{ fontSize: 12, color: engine === opt.id ? '#2563EB' : 'var(--text-muted)' }}>{opt.desc}</div>
+            <label className="text-sm font-semibold text-slate-700 mb-2 block">
+              Aggregation Engine
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'custom', label: 'Custom FedAvg', desc: 'Weighted average' },
+                { id: 'flower', label: 'Flower Framework', desc: 'Production FL' },
+              ].map(opt => {
+                const active = engine === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setEngine(opt.id)}
+                    className={`py-2.5 px-3 rounded-xl text-left border transition-all ${
+                      active
+                        ? 'bg-teal-50 border-teal-500 text-teal-800 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <p className="text-xs font-bold">{opt.label}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{opt.desc}</p>
                   </button>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 32 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Aggregation Rounds</div>
-                <span className="font-mono" style={{ fontSize: 16, fontWeight: 800, padding: '4px 12px', borderRadius: '8px', background: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}>{numRounds}</span>
-              </div>
-              <input type="range" min={1} max={10} value={numRounds} onChange={e => setNumRounds(parseInt(e.target.value))} style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-ghost)', marginTop: 8, fontWeight: 600 }}>
-                <span>1</span><span>5</span><span>10</span>
-              </div>
-            </div>
-
-            <div style={{ borderRadius: '14px', padding: '20px', background: 'var(--purple-light)', border: '1px solid rgba(124,58,237,0.2)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-xs)' }}>
-                    <FiShield size={16} style={{ color: 'var(--purple)' }} />
-                  </div>
-                  <div>
-                    <div className="font-heading" style={{ fontSize: 15, fontWeight: 800, color: '#5B21B6' }}>Differential Privacy</div>
-                    <div style={{ fontSize: 12, color: '#4C1D95' }}>Inject cryptographic noise</div>
-                  </div>
-                </div>
-                <label className="toggle">
-                  <input type="checkbox" checked={dpEnabled} onChange={e => setDpEnabled(e.target.checked)} />
-                  <span className="toggle-slider" style={{ background: dpEnabled ? 'var(--purple)' : 'var(--text-ghost)' }} />
-                </label>
-              </div>
-              <AnimatePresence>
-                {dpEnabled && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} style={{ overflow: 'hidden' }}>
-                    <div style={{ paddingTop: 16, borderTop: '1px dashed rgba(124,58,237,0.2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#5B21B6' }}>Epsilon (ε) Value</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span className="font-mono" style={{ fontSize: 15, fontWeight: 800, color: 'var(--purple)' }}>{dpEpsilon.toFixed(1)}</span>
-                          <span className="badge badge-purple" style={{ fontSize: 10, padding: '4px 8px' }}>{getPrivacyLabel(dpEpsilon)} PRIVACY</span>
-                        </div>
-                      </div>
-                      <input type="range" min={0.1} max={10} step={0.1} value={dpEpsilon} onChange={e => setDpEpsilon(parseFloat(e.target.value))} style={{ width: '100%', accentColor: 'var(--purple)', cursor: 'pointer' }} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'rgba(91,33,182,0.6)', marginTop: 8, fontWeight: 600 }}>
-                        <span>0.1 (Strict)</span><span>10 (Lenient)</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                );
+              })}
             </div>
           </div>
 
-          <button onClick={handleTriggerTraining} disabled={training || !isMLOnline}
-            className="btn-primary" style={{ width: '100%', padding: '16px', fontSize: 16, background: training || !isMLOnline ? 'var(--bg-elevated)' : 'var(--accent)', color: training || !isMLOnline ? 'var(--text-ghost)' : 'white', border: training || !isMLOnline ? '1px solid var(--border-default)' : 'none', marginTop: 'auto' }}>
-            {training ? <><div className="spinner" /><span>Orchestrating Cycle…</span></> : <><FiZap size={18} /><span>Trigger FL Round</span></>}
-          </button>
-        </motion.div>
+          {/* Training Rounds */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-700">
+                Federation Rounds
+              </label>
+              <span className="text-xs font-bold font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                {numRounds} {numRounds === 1 ? 'Round' : 'Rounds'}
+              </span>
+            </div>
+            <input
+              type="range" min="1" max="10" value={numRounds}
+              onChange={e => setNumRounds(parseInt(e.target.value))}
+              className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-teal-600"
+            />
+            <div className="flex justify-between text-[11px] text-slate-400 mt-1.5">
+              <span>1 (Fast)</span>
+              <span>5 (Recommended)</span>
+              <span>10 (Thorough)</span>
+            </div>
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* Differential Privacy */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <FiShield size={13} className="text-teal-600" />
+                Differential Privacy (DP)
+              </label>
+              {dpEnabled && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getPrivacyLabel(dpEpsilon).color}`}>
+                  {getPrivacyLabel(dpEpsilon).label}
+                </span>
+              )}
+            </div>
 
-          <AnimatePresence>
-            {trainingResult && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-                className="card" style={{ padding: '24px', background: 'var(--success-light)', border: '1px solid var(--success-mid)', boxShadow: '0 4px 12px rgba(16,185,129,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)' }}>
-                    <FiCheck size={20} color="white" />
-                  </div>
-                  <div>
-                    <div className="font-heading" style={{ fontSize: 18, fontWeight: 800, color: '#065F46' }}>Training Cycle Completed</div>
-                    <div style={{ fontSize: 13, color: 'var(--success)', fontWeight: 500, marginTop: 2 }}>Round #{trainingResult.roundNumber} · Engine: {trainingResult.engine} · {trainingResult.numRounds} Iterations</div>
-                  </div>
+            <div className="flex items-center gap-3 mb-2">
+              <button
+                type="button"
+                onClick={() => setDpEnabled(!dpEnabled)}
+                className={`w-10 h-5 rounded-full relative transition-colors duration-200 ${
+                  dpEnabled ? 'bg-teal-600' : 'bg-slate-300'
+                }`}
+              >
+                <div
+                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    dpEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+              <span className="text-xs text-slate-600 font-medium">
+                {dpEnabled ? 'Laplacian Noise Injected' : 'Standard Aggregation'}
+              </span>
+            </div>
+
+            {dpEnabled && (
+              <div className="mt-2.5 pt-2 border-t border-slate-100">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-500">Privacy Budget (ε):</span>
+                  <span className="font-mono font-bold text-slate-800">{dpEpsilon.toFixed(1)}</span>
                 </div>
-                {trainingResult.improvements && Object.keys(trainingResult.improvements).length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-                    {Object.entries(trainingResult.improvements).map(([disease, imp]) => {
-                      const val = parseFloat(imp);
-                      return (
-                        <div key={disease} style={{ padding: '12px', borderRadius: '10px', background: 'white', border: '1px solid var(--success-mid)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'capitalize', marginBottom: 6 }}>{disease.replace(/_/g, ' ')}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {val > 0 ? <FiArrowUp size={16} style={{ color: 'var(--success)' }} /> : val < 0 ? <FiArrowDown size={16} style={{ color: 'var(--danger)' }} /> : <FiMinus size={16} style={{ color: 'var(--text-ghost)' }} />}
-                            <span className="font-mono" style={{ fontSize: 18, fontWeight: 800, color: val > 0 ? 'var(--success)' : val < 0 ? 'var(--danger)' : 'var(--text-ghost)' }}>
-                              {val > 0 ? '+' : ''}{val.toFixed(2)}%
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {!loading && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.4 }} className="card" style={{ padding: '32px', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                <div>
-                  <div className="font-heading" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Diagnostic Performance</div>
-                  <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Latest global model accuracy per pathology</div>
-                </div>
-                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--bg-input)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FiActivity size={18} style={{ color: 'var(--text-secondary)' }} />
+                <input
+                  type="range" min="0.1" max="10" step="0.1" value={dpEpsilon}
+                  onChange={e => setDpEpsilon(parseFloat(e.target.value))}
+                  className="w-full h-2 rounded-lg bg-slate-200 appearance-none cursor-pointer accent-teal-600"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                  <span>ε=0.1 (High Noise)</span>
+                  <span>ε=10 (Low Noise)</span>
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={diseaseAccuracies} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={36}>
-                  <CartesianGrid strokeDasharray="4 4" stroke="var(--border-subtle)" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--text-ghost)', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                  <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-ghost)', fontSize: 12, fontWeight: 600 }} axisLine={false} tickLine={false} dx={-10} />
-                  <Tooltip cursor={{ fill: 'var(--bg-input)' }} content={<ChartTooltip />} />
-                  <Bar dataKey="accuracy" radius={[6, 6, 0, 0]}>
-                    {diseaseAccuracies.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Trigger Button */}
+        <button
+          type="button"
+          onClick={handleTriggerTraining}
+          disabled={training}
+          className={`w-full mt-6 py-3 px-4 rounded-xl flex items-center justify-center gap-2.5 font-bold text-sm text-white transition-all shadow-sm ${
+            training
+              ? 'bg-slate-400 cursor-not-allowed'
+              : 'bg-teal-600 hover:bg-teal-700 active:scale-[0.99]'
+          }`}
+        >
+          {training ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Coordinating Multi-Hospital FL Training…</span>
+            </>
+          ) : (
+            <>
+              <FiZap size={16} />
+              <span>Trigger FL Round ({engine === 'flower' ? 'Flower Engine' : 'Custom FedAvg'})</span>
+              {dpEnabled && <span className="opacity-90 font-normal">· DP Protected (ε={dpEpsilon})</span>}
+            </>
+          )}
+        </button>
+      </Card>
+
+      {/* Training Results Banner */}
+      {trainingResult?.comparison && (
+        <Card delay={0} className="p-6 border-teal-200 bg-teal-50/30">
+          <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FiActivity size={16} className="text-teal-700" />
+            Training Round {trainingResult.round} Results Summary
+          </h2>
+
+          {trainingResult.overall && (
+            <div className="bg-white rounded-xl p-4 mb-5 border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    Global Ensemble Accuracy
+                  </p>
+                  <p className="text-2xl font-bold font-mono text-slate-900 flex items-center gap-2">
+                    <span>{(trainingResult.overall.avg_before * 100).toFixed(1)}%</span>
+                    <span className="text-slate-400 font-normal text-lg">→</span>
+                    <span className="text-teal-700">{(trainingResult.overall.avg_after * 100).toFixed(1)}%</span>
+                  </p>
+                </div>
+
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-bold font-mono ${
+                  trainingResult.overall.avg_improvement > 0
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  {trainingResult.overall.avg_improvement > 0 ? (
+                    <FiArrowUp size={14} />
+                  ) : trainingResult.overall.avg_improvement < 0 ? (
+                    <FiArrowDown size={14} />
+                  ) : (
+                    <FiMinus size={14} />
+                  )}
+                  <span>{(trainingResult.overall.avg_improvement * 100).toFixed(2)}%</span>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                <span>Engine: <strong className="text-slate-700">{trainingResult.engine || engine}</strong></span>
+                <span>Active Hospitals: <strong className="text-slate-700">{trainingResult.participating_hospitals}</strong></span>
+                {trainingResult.dp_applied && (
+                  <span className="text-emerald-700 font-medium">Privacy Noise Applied (ε={trainingResult.dp_epsilon})</span>
+                )}
+              </div>
+            </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {loading ? [...Array(4)].map((_, i) => (
-              <div key={i} className="card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}><Sk h="40px" w="40px" r="10px" /><Sk h="24px" w="60px" r="6px" /></div>
-                <Sk h="6px" r="99px" />
-              </div>
-            )) : diseaseAccuracies.map((d, i) => <DiseaseCard key={d.name} d={d} index={i} />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {Object.entries(trainingResult.comparison).map(([disease, comp]) => {
+              const imp = comp.improvement;
+              const isPositive = imp > 0;
+              return (
+                <div
+                  key={disease}
+                  className="bg-white rounded-xl p-3.5 border border-slate-200/90 shadow-sm flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">
+                      {disease === 'heart_disease' ? '❤️' : disease === 'diabetes' ? '🩸' :
+                       disease === 'kidney_disease' ? '🫘' : disease === 'liver_disease' ? '🫁' : '🧠'}
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{comp.disease_name}</p>
+                      <p className="text-[11px] font-mono text-slate-500">
+                        {(comp.before * 100).toFixed(1)}% → {(comp.after * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded ${
+                    isPositive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {isPositive ? '+' : ''}{(imp * 100).toFixed(1)}%
+                  </span>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </Card>
+      )}
+
+      {/* Disease Model Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {diseaseAccuracies.map((d, i) => {
+          return (
+            <Card key={d.name} delay={i * 0.05} className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{d.emoji}</span>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">{d.fullName}</h3>
+                    <p className="text-[11px] text-slate-400">Logistic Regression Classifier</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <FiCheck size={10} /> Active
+                  </span>
+                  {d.isLive && (
+                    <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Weights
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {d.accuracy === 0 && !d.isLive ? (
+                <div className="text-center py-4 bg-slate-50 rounded-xl">
+                  <p className="text-xs text-slate-400">Train model to calculate accuracy</p>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-full overflow-hidden h-2 mb-2 bg-slate-100">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${d.accuracy}%` }}
+                      transition={{ delay: i * 0.05 + 0.3, duration: 0.8 }}
+                      className="h-full rounded-full bg-teal-600"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Test Accuracy</span>
+                    <span className="text-base font-bold font-mono text-slate-900">
+                      {d.accuracy.toFixed(2)}%
+                    </span>
+                  </div>
+                  {d.f1 !== undefined && d.isLive && (
+                    <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-slate-100">
+                      {[
+                        ['F1-Score', d.f1],
+                        ['Precision', d.precision],
+                        ['Recall', d.recall],
+                      ].map(([label, val]) => (
+                        <div key={label} className="text-center">
+                          <p className="text-[10px] font-medium text-slate-400">{label}</p>
+                          <p className="text-xs font-bold font-mono text-slate-800">
+                            {val?.toFixed(1)}%
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </Card>
+          );
+        })}
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className="card" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-          <div className="font-heading" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-primary)' }}>Lineage Registry</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Historical log of all aggregated model versions.</div>
-        </div>
-        {loading ? (
-          <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[...Array(5)].map((_, i) => <Sk key={i} h="56px" r="12px" />)}
+      {/* Accuracy Comparison Chart */}
+      <Card delay={0.15} className="p-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">
+              Disease Classification Accuracy Across Nodes
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isMLOnline ? 'Real-time test split metrics from Python ML service' : 'Waiting for ML service connection'}
+            </p>
           </div>
-        ) : models.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '64px 32px', textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: '16px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <FiCpu size={28} style={{ color: 'var(--text-ghost)' }} />
+        </div>
+
+        {!isMLOnline ? (
+          <div className="flex items-center justify-center h-48 text-center bg-slate-50 rounded-xl">
+            <div>
+              <FiWifiOff size={24} className="mx-auto mb-2 text-slate-400" />
+              <p className="text-xs font-semibold text-slate-600">ML Service Offline</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Start ML service container to query live test accuracy</p>
             </div>
-            <div className="font-heading" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>Registry Empty</div>
-            <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Trigger an initial training round to generate a model artifact.</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '16px 32px', fontSize: 12, letterSpacing: '0.05em' }}>Version Hash</th>
-                  <th style={{ padding: '16px', fontSize: 12, letterSpacing: '0.05em' }}>Framework</th>
-                  <th style={{ padding: '16px', fontSize: 12, letterSpacing: '0.05em' }}>Aggregations</th>
-                  <th style={{ padding: '16px', fontSize: 12, letterSpacing: '0.05em' }}>Node Count</th>
-                  <th style={{ padding: '16px', fontSize: 12, letterSpacing: '0.05em' }}>Deployment Status</th>
-                  <th style={{ padding: '16px 32px', fontSize: 12, letterSpacing: '0.05em', textAlign: 'right' }}>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {models.map((m, i) => (
-                  <motion.tr key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
-                    <td style={{ padding: '16px 32px' }}>
-                      <span className="font-mono" style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: '8px', background: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--primary-mid)' }}>
-                        {m.version}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{m.engine || 'custom'}</td>
-                    <td style={{ padding: '16px' }} className="font-mono"><span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{m.numRounds || '—'}</span></td>
-                    <td style={{ padding: '16px', fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)' }}>{m.participantCount || '—'} active</td>
-                    <td style={{ padding: '16px' }}><span className={`badge ${m.isActive ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 11, padding: '4px 10px' }}>{m.isActive ? 'Primary' : 'Archived'}</span></td>
-                    <td style={{ padding: '16px 32px', fontSize: 13, color: 'var(--text-muted)', textAlign: 'right', fontWeight: 500 }}>{m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={diseaseAccuracies} barCategoryGap="30%" margin={{ top: 10, right: 16, left: 0, bottom: 12 }}>
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: '#64748b', fontSize: 12 }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: '#64748b', fontSize: 11 }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                  domain={[0, 100]}
+                  tickFormatter={v => `${v}%`}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(241, 245, 249, 0.6)' }} />
+                <Bar dataKey="accuracy" radius={[6, 6, 0, 0]}>
+                  {diseaseAccuracies.map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
-      </motion.div>
+      </Card>
+
+      {/* Model Version History */}
+      <Card delay={0.2} className="p-6">
+        <h2 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <FiLayers size={16} className="text-teal-600" />
+          Model Version History
+        </h2>
+
+        {models.length > 0 ? (
+          <div className="divide-y divide-slate-100">
+            {models.map((model) => (
+              <div
+                key={model.id}
+                className="py-3.5 flex items-center justify-between gap-4 first:pt-0 last:pb-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-50 text-teal-700 border border-teal-200">
+                    <FiCpu size={14} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-900">
+                      {model.versionName}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      Round: {model.trainingRound} · {model.aggregationMethod?.toUpperCase() || 'FEDAVG'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm font-bold font-mono text-slate-900">
+                      {model.accuracy ? `${(model.accuracy * 100).toFixed(2)}%` : 'N/A'}
+                    </p>
+                    <p className="text-[10px] text-slate-400">reported accuracy</p>
+                  </div>
+                  {model.isActive && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Active
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-slate-50 rounded-xl">
+            <FiCpu size={24} className="mx-auto mb-2 text-slate-400" />
+            <p className="text-xs font-semibold text-slate-600">No model versions registered yet</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Trigger an FL training round to produce a global checkpoint</p>
+          </div>
+        )}
+      </Card>
     </div>
   );
-}
+};
+
+export default ModelsPage;

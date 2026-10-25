@@ -13,7 +13,6 @@ export const getLatestModel = () => {
 };
 
 export const triggerTraining = (data) => {
-  
   const requestData = {
     hospitalIds: data.hospitalIds || [1, 2, 3],
     epochs: data.epochs || 5,

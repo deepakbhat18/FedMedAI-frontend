@@ -1,232 +1,325 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiBarChart2, FiFilter, FiTrendingUp, FiTrendingDown, FiChevronDown, FiChevronUp, FiActivity, FiSearch } from 'react-icons/fi';
-import { getPredictionsByHospital, getPredictionAnalytics } from '../api/predictionApi';
+import { useNavigate } from 'react-router-dom';
+import {
+  FiActivity, FiFilter, FiTrendingUp,
+  FiTrendingDown, FiChevronDown, FiChevronUp,
+  FiUser, FiLayers, FiCalendar, FiPlus
+} from 'react-icons/fi';
+import {
+  getPredictionsByHospital,
+  getPredictionAnalytics,
+} from '../api/predictionApi';
 import { getAllHospitals } from '../api/hospitalApi';
 import { toast } from 'react-toastify';
-
-const FEATURE_LABELS = {
-  age:'Age', gender:'Gender', blood_pressure:'Blood Pressure', bloodPressure:'Blood Pressure',
-  cholesterol:'Cholesterol', heart_rate:'Heart Rate', heartRate:'Heart Rate',
-  glucose:'Glucose', bmi:'BMI', smoking:'Smoker',
-  diabetes_history:'Diabetes Hx', diabetesHistory:'Diabetes Hx',
-  family_history:'Family Hx', familyHistory:'Family Hx',
-  creatinine:'Creatinine', hemoglobin:'Hemoglobin', bilirubin:'Bilirubin',
-  alt_enzyme:'ALT Enzyme', altEnzyme:'ALT Enzyme', albumin:'Albumin',
-  potassium:'Potassium', sodium:'Sodium', urea:'Urea',
-};
-
-const RISK_STYLE = {
-  HIGH:     { color: '#DC2626', bg: 'var(--danger-light)',  badge: 'badge-red'    },
-  MODERATE: { color: '#D97706', bg: 'var(--warning-light)', badge: 'badge-yellow' },
-  LOW:      { color: '#2563EB', bg: 'var(--accent-light)',  badge: 'badge-blue'   },
-  MINIMAL:  { color: '#059669', bg: 'var(--success-light)', badge: 'badge-green'  },
-};
-
-const Sk = ({ h = '16px', w = '100%' }) => <div className="shimmer" style={{ height: h, width: w }} />;
+import { TableSkeleton } from '../components/common/SkeletonLoader';
 
 const PredictionDetails = ({ prediction }) => {
   const features = prediction.featuresUsed || {};
-  const entries = Object.entries(features).filter(([, v]) => v !== null && v !== undefined);
+
+  const FEATURE_LABELS = {
+    age: 'Age',
+    gender: 'Gender',
+    blood_pressure: 'Blood Pressure',
+    bloodPressure: 'Blood Pressure',
+    cholesterol: 'Cholesterol',
+    heart_rate: 'Heart Rate',
+    heartRate: 'Heart Rate',
+    glucose: 'Glucose',
+    bmi: 'BMI',
+    smoking: 'Smoking',
+    diabetes_history: 'Diabetes History',
+    diabetesHistory: 'Diabetes History',
+    family_history: 'Family History',
+    familyHistory: 'Family History',
+    creatinine: 'Creatinine',
+    hemoglobin: 'Hemoglobin',
+    bilirubin: 'Bilirubin',
+    alt_enzyme: 'ALT Enzyme',
+    altEnzyme: 'ALT Enzyme',
+    albumin: 'Albumin',
+    potassium: 'Potassium',
+    sodium: 'Sodium',
+    urea: 'Urea',
+  };
+
+  const featureEntries = Object.entries(features)
+    .filter(([_, v]) => v !== null && v !== undefined);
+
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} style={{ overflow: 'hidden' }}>
-      <div style={{ padding: '24px', background: 'var(--bg-app)', borderTop: '1px solid var(--border-subtle)', boxShadow: 'inset 0 4px 6px -4px rgba(0,0,0,0.05)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-ghost)', marginBottom: 16 }}>Inference Vector Data</div>
-        {entries.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12 }}>
-            {entries.map(([key, value]) => (
-              <div key={key} style={{ borderRadius: '10px', padding: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{FEATURE_LABELS[key] || key}</div>
-                <div className="font-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : String(value)}
-                </div>
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+      className="overflow-hidden bg-slate-50 border-t border-slate-100"
+    >
+      <div className="px-5 py-4">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+          Clinical Feature Input Vector
+        </p>
+        {featureEntries.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {featureEntries.map(([key, value]) => (
+              <div
+                key={key}
+                className="bg-white border border-slate-200/80 rounded-lg p-2 text-center"
+              >
+                <p className="text-[10px] text-slate-500 font-medium truncate mb-0.5">
+                  {FEATURE_LABELS[key] || key}
+                </p>
+                <p className="text-xs font-bold text-slate-900 font-mono">
+                  {typeof value === 'number'
+                    ? Number.isInteger(value) ? value : value.toFixed(1)
+                    : String(value)}
+                </p>
               </div>
             ))}
           </div>
         ) : (
-          <div style={{ padding: '16px', borderRadius: '12px', border: '1px dashed var(--border-strong)', textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>No localized feature vector available.</div>
+          <p className="text-xs text-slate-400">No feature parameter data recorded.</p>
         )}
       </div>
     </motion.div>
   );
 };
 
-export default function PredictionsPage() {
+const PredictionsPage = () => {
+  const navigate = useNavigate();
+
   const [predictions, setPredictions] = useState([]);
   const [hospitals, setHospitals] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [selectedHospital, setSelectedHospital] = useState('');
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     try {
-      const [hospitalsRes, analyticsRes] = await Promise.all([getAllHospitals(), getPredictionAnalytics()]);
-      setHospitals(hospitalsRes.data.data);
-      setAnalytics(analyticsRes.data.data);
-      if (analyticsRes.data.data?.recentPredictions) setPredictions(analyticsRes.data.data.recentPredictions);
-    } catch { toast.error('Failed to load telemetry'); }
-    finally { setLoading(false); }
+      setLoading(true);
+      const [hospitalsRes, analyticsRes] = await Promise.all([
+        getAllHospitals(),
+        getPredictionAnalytics(),
+      ]);
+      setHospitals(hospitalsRes.data.data || []);
+      setAnalytics(analyticsRes.data.data || null);
+      if (analyticsRes.data.data?.recentPredictions) {
+        setPredictions(analyticsRes.data.data.recentPredictions);
+      }
+    } catch {
+      toast.error('Failed to load predictions');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadByHospital = async (hospitalId) => {
-    setSelectedHospital(hospitalId); setExpandedId(null);
-    if (!hospitalId) { loadData(); return; }
+    setSelectedHospital(hospitalId);
+    setExpandedId(null);
+    if (!hospitalId) {
+      loadData();
+      return;
+    }
     try {
+      setLoading(true);
       const res = await getPredictionsByHospital(hospitalId);
-      setPredictions(res.data.data);
-    } catch { toast.error('Failed to filter nodes'); }
+      setPredictions(res.data.data || []);
+    } catch {
+      toast.error('Failed to filter predictions by hospital');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleExpand = (id) => {
+    setExpandedId(prev => prev === id ? null : id);
   };
 
   const total = analytics?.totalPredictions || 0;
   const dist = analytics?.predictionDistribution || {};
 
-  const filtered = predictions.filter(p => 
-    p.patientCode?.toLowerCase().includes(search.toLowerCase()) || 
-    p.diseaseType?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="page-enter" style={{ maxWidth: 1400, margin: '0 auto' }}>
-      
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading" style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: 8 }}>Inference Logs</h1>
-          <p style={{ fontSize: 15, color: 'var(--text-muted)' }}>Historical registry of all {total.toLocaleString()} model predictions across the network.</p>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Prediction Audit Log & History
+          </h2>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
+            Audit trail of AI diagnostic risk predictions and patient inferences across hospital nodes.
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/predict')}
+          className="inline-flex items-center gap-2 h-11 px-5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-sm"
+        >
+          <FiPlus size={16} />
+          <span>New AI Prediction</span>
+        </button>
       </div>
 
+      {/* Distribution Summary Cards */}
       {!loading && Object.keys(dist).length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
-          {Object.entries(dist).map(([label, count], i) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(dist).map(([label, count]) => {
             const isDisease = label === 'Disease Detected';
-            const accent = isDisease ? 'var(--danger)' : 'var(--success)';
-            const bg = isDisease ? 'var(--danger-light)' : 'var(--success-light)';
-            const border = isDisease ? 'rgba(220,38,38,0.2)' : 'rgba(5,150,105,0.2)';
             const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
             return (
-              <motion.div key={label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1, duration: 0.4 }}
-                className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '24px', background: bg, border: `1px solid ${border}`, boxShadow: 'none' }}>
-                <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'white', border: `1px solid ${border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
-                  {isDisease ? <FiTrendingUp size={20} style={{ color: accent }} /> : <FiTrendingDown size={20} style={{ color: accent }} />}
-                </div>
+              <div
+                key={label}
+                className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm flex items-center justify-between"
+              >
                 <div>
-                  <div className="font-mono" style={{ fontSize: 32, fontWeight: 800, color: accent, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 4 }}>{count.toLocaleString()}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: isDisease ? '#991B1B' : '#064E3B' }}>{label} · {pct}%</div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
+                    {label}
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900">
+                      {count.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-semibold text-slate-400">
+                      ({pct}%)
+                    </span>
+                  </div>
                 </div>
-              </motion.div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  isDisease ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                }`}>
+                  {isDisease ? <FiTrendingUp size={22} /> : <FiTrendingDown size={22} />}
+                </div>
+              </div>
             );
           })}
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-        <div style={{ position: 'relative', width: 300 }}>
-          <FiSearch size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-ghost)' }} />
-          <input type="text" placeholder="Search by patient ID or disease..." value={search} onChange={e => setSearch(e.target.value)} className="input-base" style={{ paddingLeft: 44, paddingBlock: 12 }} />
-        </div>
-        <div style={{ position: 'relative' }}>
-          <FiFilter size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-ghost)' }} />
-          <select value={selectedHospital} onChange={e => loadByHospital(e.target.value)} className="input-base" style={{ paddingLeft: 44, paddingRight: 40, paddingBlock: 12, minWidth: 240, appearance: 'none', cursor: 'pointer', fontWeight: 500 }}>
-            <option value="">Global Network (All Nodes)</option>
-            {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+      {/* Filter Row */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <FiFilter size={16} className="text-slate-400" />
+          <span className="text-sm font-semibold text-slate-700">Filter by Node:</span>
+          <select
+            value={selectedHospital}
+            onChange={(e) => loadByHospital(e.target.value)}
+            className="h-11 text-sm font-medium bg-slate-50 border border-slate-200 rounded-xl px-4 text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          >
+            <option value="">All Hospital Nodes</option>
+            {hospitals.map(h => (
+              <option key={h.id} value={h.id}>{h.name}</option>
+            ))}
           </select>
-          <FiChevronDown size={16} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-ghost)', pointerEvents: 'none' }} />
         </div>
-        <span style={{ fontSize: 13, color: 'var(--text-ghost)', marginLeft: 'auto', fontWeight: 500 }}>Click any record to inspect feature vectors</span>
+
+        <span className="text-sm font-medium text-slate-500">
+          Showing <strong>{predictions.length}</strong> recorded evaluations
+        </span>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }} className="data-table-wrapper custom-scroll" style={{ maxHeight: '800px' }}>
+      {/* Table Card */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden">
         {loading ? (
-          <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {[...Array(8)].map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-                <Sk h="16px" w="60px" /><Sk h="16px" w="120px" /><Sk h="16px" w="150px" /><Sk h="28px" w="100px" r="99px" /><Sk h="16px" w="100px" />
-              </div>
-            ))}
+          <div className="p-6">
+            <TableSkeleton rows={6} />
           </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 32px', textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: '16px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-              <FiActivity size={28} style={{ color: 'var(--text-ghost)' }} />
-            </div>
-            <div className="font-heading" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>No Logs Found</div>
-            <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>There are no telemetry records matching your filters.</div>
+        ) : predictions.length === 0 ? (
+          <div className="p-12 text-center text-slate-400 space-y-3">
+            <FiActivity size={36} className="mx-auto text-slate-300" />
+            <h4 className="text-base font-semibold text-slate-700">No Predictions Logged Yet</h4>
+            <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
+              Run your first federated multi-disease evaluation from the <strong>AI Diagnosis</strong> page to record clinical diagnostic scores.
+            </p>
+            <button
+              onClick={() => navigate('/predict')}
+              className="inline-flex items-center gap-2 h-11 px-5 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors mt-2"
+            >
+              <span>Go to AI Diagnosis</span>
+            </button>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Trace ID</th>
-                <th>Patient Profile</th>
-                <th>Model Target</th>
-                <th>Inference Result</th>
-                <th>Confidence Score</th>
-                <th>Risk Stratification</th>
-                <th>Model Version</th>
-                <th>Timestamp</th>
-                <th style={{ width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((pred, i) => {
-                const rStyle = RISK_STYLE[pred.riskLevel] || RISK_STYLE.MINIMAL;
-                const isExpanded = expandedId === pred.id;
-                const confidence = pred.confidence ? `${(pred.confidence * 100).toFixed(1)}%` : '—';
-                return (
-                  <React.Fragment key={pred.id}>
-                    <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                      onClick={() => setExpandedId(isExpanded ? null : pred.id)}
-                      style={{ cursor: 'pointer', background: isExpanded ? 'var(--bg-app)' : 'transparent' }}>
-                      <td className="font-mono" style={{ fontSize: 13, color: 'var(--text-muted)' }}>#{pred.id}</td>
-                      <td>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{pred.patientCode || '—'}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{pred.hospitalName || '—'}</div>
-                      </td>
-                      <td style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-secondary)' }}>{pred.diseaseType?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '—'}</td>
-                      <td>
-                        <span className={`badge ${pred.prediction === 1 ? 'badge-red' : 'badge-green'}`} style={{ fontSize: 12 }}>
-                          {pred.predictionLabel || (pred.prediction === 1 ? 'Disease Detected' : 'Healthy')}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ flex: 1, height: 6, borderRadius: 99, background: 'var(--border-default)', overflow: 'hidden', minWidth: 80, maxWidth: 120 }}>
-                            <div style={{ height: '100%', borderRadius: 99, background: rStyle.color, width: `${(pred.confidence || 0) * 100}%` }} />
-                          </div>
-                          <span className="font-mono" style={{ fontSize: 14, color: 'var(--text-primary)', fontWeight: 700 }}>{confidence}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge ${rStyle.badge}`} style={{ fontSize: 11 }}>{pred.riskLevel || '—'}</span>
-                      </td>
-                      <td className="font-mono" style={{ fontSize: 13, color: 'var(--text-muted)' }}>{pred.modelVersion || '—'}</td>
-                      <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{pred.createdAt ? new Date(pred.createdAt).toLocaleString() : '—'}</td>
-                      <td>
-                        <div style={{ width: 28, height: 28, borderRadius: '8px', background: isExpanded ? 'var(--bg-surface)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', border: isExpanded ? '1px solid var(--border-default)' : 'none', boxShadow: isExpanded ? 'var(--shadow-xs)' : 'none' }}>
-                          <FiChevronDown size={16} style={{ color: 'var(--text-secondary)', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1)' }} />
-                        </div>
-                      </td>
-                    </motion.tr>
-                    {isExpanded && (
-                      <tr key={`${pred.id}-details`}>
-                        <td colSpan={9} style={{ padding: 0 }}>
-                          <AnimatePresence>
-                            <PredictionDetails prediction={pred} />
-                          </AnimatePresence>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-xs">
+                  <th className="py-3.5 px-5">Patient Code</th>
+                  <th className="py-3.5 px-5">Hospital Node</th>
+                  <th className="py-3.5 px-5">Evaluation Label</th>
+                  <th className="py-3.5 px-5">Confidence</th>
+                  <th className="py-3.5 px-5">Model Version</th>
+                  <th className="py-3.5 px-5">Timestamp</th>
+                  <th className="py-3.5 px-5 text-right">Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {predictions.map((pred) => {
+                  const isDisease = pred.prediction === 1 || pred.predictionLabel?.includes('Detected');
+                  const isExpanded = expandedId === pred.id;
+
+                  return (
+                    <React.Fragment key={pred.id}>
+                      <tr className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-4 px-5 font-bold text-slate-900 font-mono text-sm">
+                          {pred.patientCode || `PID-${pred.patientId}`}
+                        </td>
+                        <td className="py-4 px-5 text-slate-700 font-medium text-sm">
+                          {pred.hospitalName}
+                        </td>
+                        <td className="py-4 px-5">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                            isDisease
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          }`}>
+                            <span className={`w-2 h-2 rounded-full ${isDisease ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                            {pred.predictionLabel || (isDisease ? 'Disease Detected' : 'Healthy')}
+                          </span>
+                        </td>
+                        <td className="py-4 px-5 font-mono font-medium text-slate-700 text-sm">
+                          {pred.confidence !== undefined && pred.confidence !== null
+                            ? `${(pred.confidence * 100).toFixed(1)}%`
+                            : '—'}
+                        </td>
+                        <td className="py-4 px-5 font-mono text-xs text-slate-500">
+                          {pred.modelVersion || 'v1.0'}
+                        </td>
+                        <td className="py-4 px-5 text-slate-500 text-xs font-mono">
+                          {pred.createdAt ? new Date(pred.createdAt).toLocaleString() : '—'}
+                        </td>
+                        <td className="py-4 px-5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(pred.id)}
+                            className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-teal-700 hover:text-teal-800 rounded-lg hover:bg-teal-50 border border-teal-200/70 transition-colors"
+                          >
+                            <span>{isExpanded ? 'Hide' : 'Features'}</span>
+                            {isExpanded ? <FiChevronUp size={14} /> : <FiChevronDown size={14} />}
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan="7" className="p-0">
+                            <PredictionDetails prediction={pred} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
-}
+};
+
+export default PredictionsPage;

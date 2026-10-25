@@ -1,31 +1,53 @@
+import { useState } from 'react';
+import { FiWifiOff, FiRefreshCw, FiX, FiAlertCircle } from 'react-icons/fi';
 import { useMLService } from '../../context/MLServiceContext';
-import { FiAlertCircle } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
 
 const MLServiceBanner = () => {
-  const { isOnline, isLoading } = useMLService();
-  if (isLoading || isOnline) return null;
+  const { isOnline, checking, retry, lastChecked } = useMLService();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (isOnline || dismissed) return null;
+
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -60, opacity: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        style={{ 
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, 
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, 
-          padding: '12px 24px', 
-          background: 'var(--warning)', 
-          color: 'white',
-          boxShadow: '0 4px 12px rgba(217,119,6,0.3)'
-        }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.2)' }}>
-          <FiAlertCircle size={14} />
+    <div className="bg-rose-50 border-b border-rose-200 px-4 py-2.5 text-xs text-rose-800 z-50 sticky top-0 transition-all">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <FiWifiOff size={16} className="text-rose-600 flex-shrink-0" />
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-rose-900">Python ML Engine Offline:</span>
+            <span className="text-rose-700">
+              Live multi-disease risk evaluation and model training require the FastAPI service.
+            </span>
+            {lastChecked && (
+              <span className="text-rose-500 text-[11px]">
+                (Checked {lastChecked.toLocaleTimeString()})
+              </span>
+            )}
+          </div>
         </div>
-        <span style={{ fontSize: 13.5, fontWeight: 500 }}>
-          <strong style={{ fontWeight: 700 }}>ML Service Offline:</strong> Core prediction and federated training nodes are currently unreachable. Please start the Python backend.
-        </span>
-      </motion.div>
-    </AnimatePresence>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={retry}
+            disabled={checking}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-semibold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 transition-colors shadow-2xs"
+          >
+            <FiRefreshCw size={11} className={checking ? 'animate-spin' : ''} />
+            <span>{checking ? 'Checking...' : 'Reconnect'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="p-1 text-rose-500 hover:text-rose-800 rounded-md transition-colors"
+            title="Dismiss notice"
+          >
+            <FiX size={14} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
+
 export default MLServiceBanner;

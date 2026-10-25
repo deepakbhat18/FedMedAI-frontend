@@ -1,160 +1,215 @@
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  FiHome, FiActivity, FiUsers, FiHeart,
-  FiCpu, FiBarChart2, FiLogOut, FiMenu,
-  FiClock, FiDownload, FiChevronLeft,
-  FiShield, FiGrid, FiMoreVertical
+  FiGrid, FiUsers, FiHeart, FiActivity,
+  FiBarChart2, FiCpu, FiDownload, FiClock,
+  FiChevronLeft, FiChevronRight, FiLogOut,
+  FiShield, FiX, FiLayers
 } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
 
-const adminNav = [
-  { path: '/dashboard',   icon: FiHome,      label: 'Intelligence Center' },
-  { path: '/hospitals',   icon: FiActivity,  label: 'Network Health' },
-  { path: '/patients',    icon: FiUsers,     label: 'Patient Data' },
-  { path: '/predict',     icon: FiHeart,     label: 'AI Diagnostics' },
-  { path: '/predictions', icon: FiBarChart2, label: 'Prediction Logs' },
-  { path: '/models',      icon: FiCpu,       label: 'FL Models' },
-  { path: '/analytics',   icon: FiGrid,      label: 'System Analytics' },
-];
-const adminTools = [
-  { path: '/scheduler', icon: FiClock,    label: 'Job Scheduler' },
-  { path: '/export',    icon: FiDownload, label: 'Data Export' },
-];
-const hospitalNav = [
-  { path: '/dashboard',   icon: FiHome,      label: 'Dashboard' },
-  { path: '/patients',    icon: FiUsers,     label: 'My Patients' },
-  { path: '/predict',     icon: FiHeart,     label: 'AI Diagnostics' },
-  { path: '/predictions', icon: FiBarChart2, label: 'Prediction Logs' },
-  { path: '/analytics',   icon: FiGrid,      label: 'Analytics' },
-];
-const hospitalTools = [
-  { path: '/export', icon: FiDownload, label: 'Data Export' },
-];
-
-const NavItem = ({ item, collapsed }) => {
+const NavItem = ({ item, collapsed, onItemClick }) => {
   const location = useLocation();
-  const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+  const isActive = location.pathname === item.path ||
+    (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+
   return (
-    <NavLink to={item.path} title={collapsed ? item.label : undefined} style={{ textDecoration: 'none', position: 'relative', display: 'block' }}>
+    <NavLink
+      to={item.path}
+      onClick={onItemClick}
+      title={collapsed ? item.label : undefined}
+      className={`group flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors relative min-h-[42px] ${
+        isActive
+          ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-900 dark:text-teal-300 font-semibold shadow-xs'
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100/70 dark:hover:bg-slate-800/60'
+      }`}
+    >
+      {/* Active Left Indicator Pill */}
       {isActive && (
-        <motion.div
-          layoutId="sidebar-active"
-          style={{ position: 'absolute', inset: 0, background: 'var(--accent-light)', borderRadius: '10px', zIndex: 0 }}
-          transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-        />
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-teal-600 dark:bg-teal-400 rounded-r-md" />
       )}
-      <div className={`nav-item ${isActive ? 'active' : ''}`} style={{ position: 'relative', zIndex: 1, background: 'transparent' }}>
-        <item.icon size={18} style={{ flexShrink: 0, color: isActive ? 'var(--accent)' : 'inherit' }} />
-        <AnimatePresence>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0, x: -8 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {item.label}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </div>
+      <span className="w-5 h-5 flex items-center justify-center flex-shrink-0">
+        <item.icon
+          size={18}
+          className={`transition-colors ${
+            isActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+          }`}
+        />
+      </span>
+      {!collapsed && (
+        <span className="truncate flex-1 min-w-0 text-left">{item.label}</span>
+      )}
+      {item.badge && !collapsed && (
+        <span className="flex-shrink-0 ml-2 px-1.5 py-0.5 text-[10px] font-bold rounded tracking-wide bg-teal-100/90 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
+          {item.badge}
+        </span>
+      )}
     </NavLink>
   );
 };
 
-const Sidebar = ({ collapsed, onCollapsedChange }) => {
+const Sidebar = ({ collapsed, onCollapsedChange, mobileOpen, onMobileClose }) => {
   const { user, logout, isAdmin } = useAuth();
-  
+
+  // Primary Clinical Tools
+  const mainNavItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: FiGrid },
+    { path: '/patients', label: 'Patients', icon: FiUsers },
+    { path: '/predict', label: 'AI Diagnosis', icon: FiHeart },
+    { path: '/predictions', label: 'Predictions', icon: FiActivity },
+    { path: '/analytics', label: 'Analytics', icon: FiBarChart2 },
+  ];
+
+  // System & Federated Learning (Admin features)
+  const federatedNavItems = [
+    ...(isAdmin ? [{ path: '/models', label: 'Federated Learning', icon: FiCpu, badge: 'FedAvg' }] : []),
+    ...(isAdmin ? [{ path: '/hospitals', label: 'Hospitals Network', icon: FiLayers }] : []),
+    { path: '/export', label: 'Reports & Export', icon: FiDownload },
+    ...(isAdmin ? [{ path: '/scheduler', label: 'Training Scheduler', icon: FiClock }] : []),
+  ];
+
   const initials = user?.fullName
     ? user.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'U';
-    
-  const mainItems = isAdmin ? adminNav : hospitalNav;
-  const toolItems = isAdmin ? adminTools : hospitalTools;
+    : user?.username?.slice(0, 2).toUpperCase() || 'U';
 
-  return (
-    <motion.aside
-      animate={{ width: collapsed ? 80 : 280 }}
-      transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      className="sidebar"
-    >
-      
-      <div style={{ padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)' }}>
-        <AnimatePresence mode="wait">
-          {!collapsed ? (
-            <motion.div key="full" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
-              style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
-                  <FiHeart size={18} color="white" />
-                </div>
-                <div>
-                  <div className="font-heading" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>FedMedAI</div>
-                  <div style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-muted)' }}>Federated Network</div>
-                </div>
-              </Link>
-            </motion.div>
-          ) : (
-            <motion.div key="icon" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ margin: '0 auto' }}>
-              <Link to="/dashboard" style={{ textDecoration: 'none' }}>
-                <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-sm)' }}>
-                  <FiHeart size={20} color="white" />
-                </div>
-              </Link>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        <button onClick={() => onCollapsedChange(!collapsed)}
-          className="icon-btn"
-          style={{ position: collapsed ? 'absolute' : 'static', right: collapsed ? '20px' : 'auto', top: collapsed ? '28px' : 'auto', zIndex: 10 }}>
-          {collapsed ? <FiMenu size={16} /> : <FiChevronLeft size={16} />}
-        </button>
-      </div>
-
-      <nav className="custom-scroll" style={{ flex: 1, padding: '24px 16px', overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        {!collapsed && <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-ghost)', padding: '0 12px 8px' }}>Workspace</div>}
-        {mainItems.map(item => <NavItem key={item.path} item={item} collapsed={collapsed} />)}
-
-        <div style={{ height: 1, background: 'var(--border-subtle)', margin: '16px 12px' }} />
-        
-        {!collapsed && <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-ghost)', padding: '0 12px 8px' }}>Tools & Config</div>}
-        {toolItems.map(item => <NavItem key={item.path} item={item} collapsed={collapsed} />)}
-      </nav>
-
-      <div style={{ padding: '16px', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-app)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: collapsed ? '8px' : '12px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', boxShadow: 'var(--shadow-xs)', position: 'relative' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '10px', background: isAdmin ? 'var(--accent-light)' : 'var(--teal-light)', border: `1px solid ${isAdmin ? 'rgba(37,99,235,0.1)' : 'rgba(13,148,136,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 600, color: isAdmin ? 'var(--accent)' : 'var(--teal)', flexShrink: 0 }}>
-            {initials}
+  const sidebarContent = (
+    <div className="flex flex-col h-full bg-white dark:bg-[#111B2E] border-r border-slate-200 dark:border-slate-800">
+      {/* Brand Header */}
+      <div className="flex items-center justify-between px-4 h-16 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-teal-600 to-cyan-500 flex items-center justify-center text-white shadow-sm flex-shrink-0">
+            <FiHeart size={18} />
           </div>
-          
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.fullName || 'User'}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                  <FiShield size={10} style={{ color: isAdmin ? 'var(--warning)' : 'var(--teal)' }} />
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-muted)' }}>{isAdmin ? 'System Admin' : 'Hospital Admin'}</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {!collapsed && (
-            <div className="dropdown-trigger" style={{ position: 'relative', cursor: 'pointer' }} onClick={logout} title="Logout">
-              <FiLogOut size={16} style={{ color: 'var(--text-ghost)', transition: 'color var(--t-fast)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-ghost)'} />
+            <div className="min-w-0 flex-1">
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-slate-100 block truncate">
+                FedMed <span className="text-teal-600 dark:text-teal-400">AI</span>
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 block tracking-wider uppercase truncate">
+                Clinical FL Platform
+              </span>
             </div>
           )}
         </div>
-        
-        {collapsed && (
-          <button onClick={logout} className="icon-btn" style={{ width: '100%', marginTop: '8px', color: 'var(--danger)' }} title="Logout">
+
+        {/* Desktop Collapse Toggle */}
+        <button
+          type="button"
+          onClick={() => onCollapsedChange(!collapsed)}
+          className="hidden md:flex w-8 h-8 rounded-lg items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <FiChevronRight size={17} /> : <FiChevronLeft size={17} />}
+        </button>
+
+        {/* Mobile Close Button */}
+        <button
+          type="button"
+          onClick={onMobileClose}
+          className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+          aria-label="Close sidebar"
+        >
+          <FiX size={19} />
+        </button>
+      </div>
+
+      {/* Navigation Sections */}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+        <div>
+          {!collapsed && (
+            <p className="px-3.5 mb-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Core Platform
+            </p>
+          )}
+          <div className="space-y-1.5">
+            {mainNavItems.map(item => (
+              <NavItem
+                key={item.path}
+                item={item}
+                collapsed={collapsed}
+                onItemClick={() => onMobileClose && onMobileClose()}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div>
+          {!collapsed && (
+            <p className="px-3.5 mb-2.5 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {isAdmin ? 'Federated & Operations' : 'Compliance & Reports'}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            {federatedNavItems.map(item => (
+              <NavItem
+                key={item.path}
+                item={item}
+                collapsed={collapsed}
+                onItemClick={() => onMobileClose && onMobileClose()}
+              />
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* User Status Footer */}
+      <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex-shrink-0">
+        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white dark:bg-[#172338] border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800 font-bold text-sm flex items-center justify-center flex-shrink-0">
+            {initials}
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
+                {user?.fullName || user?.username || 'User'}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <FiShield size={12} className="text-teal-600 dark:text-teal-400 flex-shrink-0" />
+                <span className="truncate">{isAdmin ? 'Admin' : 'Hospital Admin'}</span>
+              </div>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={logout}
+            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors flex-shrink-0 focus:outline-none"
+            title="Sign out"
+          >
             <FiLogOut size={16} />
           </button>
-        )}
+        </div>
       </div>
-    </motion.aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (In Document Flow) */}
+      <aside
+        style={{ width: collapsed ? '72px' : '256px' }}
+        className="hidden md:flex flex-col flex-shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 ease-in-out"
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 md:hidden transition-opacity"
+          onClick={onMobileClose}
+        />
+      )}
+
+      {/* Mobile Sliding Drawer */}
+      <div
+        className={`fixed top-0 left-0 bottom-0 w-64 z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {sidebarContent}
+      </div>
+    </>
   );
 };
+
 export default Sidebar;

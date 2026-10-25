@@ -1,5 +1,4 @@
 
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { loginUser, registerUser } from '../api/authApi';
 import { toast } from 'react-toastify';
@@ -45,7 +44,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(userData);
       setIsAuthenticated(true);
-      toast.success('Welcome back to FedMedAI');
+      toast.success(`Welcome back, ${userData.fullName}!`);
       return { success: true };
     } catch (error) {
       const message =
@@ -80,7 +79,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     setUser(null);
     setIsAuthenticated(false);
-    toast.info('You have been logged out');
+    toast.info('Logged out successfully');
   };
 
   const isAdmin        = user?.role === 'ADMIN';

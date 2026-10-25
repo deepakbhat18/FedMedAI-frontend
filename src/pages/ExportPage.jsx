@@ -1,181 +1,286 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiDownload, FiUsers, FiBarChart2, FiFilter, FiShield, FiChevronDown, FiCheck, FiDatabase } from 'react-icons/fi';
-import { getExportStats, exportPatientsCsv, exportPredictionsCsv } from '../api/exportApi';
+import {
+  FiDownload, FiUsers, FiBarChart2,
+  FiFilter, FiCheck, FiAlertCircle, FiFileText,
+} from 'react-icons/fi';
+import {
+  getExportStats,
+  exportPatientsCsv,
+  exportPredictionsCsv,
+} from '../api/exportApi';
 import { getAllHospitals } from '../api/hospitalApi';
 import { toast } from 'react-toastify';
 
-const Sk = ({ h = '16px', w = '100%', r = '8px' }) => <div className="shimmer" style={{ height: h, width: w, borderRadius: r }} />;
-
-const PATIENTS_COLS  = ['Profile ID','Secure Trace ID','Origin Node','Demographics','Clinical Vitals','Laboratory Results','Risk Factors','Timestamp'];
-const PREDICTIONS_COLS = ['Trace ID','Secure Trace ID','Origin Node','Inference Result','Confidence Score','Risk Stratification','Model Hash','Timestamp'];
-
-export default function ExportPage() {
-  const [stats, setStats]       = useState(null);
-  const [hospitals, setHospitals] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [exporting, setExporting] = useState({ patients: false, predictions: false });
-  const [filters, setFilters]   = useState({ hospitalId: '', startDate: '', endDate: '' });
-
-  useEffect(() => { loadData(); }, []);
-
-  const loadData = async () => {
-    try {
-      const [statsRes, hospitalsRes] = await Promise.all([getExportStats(), getAllHospitals()]);
-      setStats(statsRes.data.data);
-      setHospitals(hospitalsRes.data.data);
-    } catch { toast.error('Failed to load telemetry data'); }
-    finally { setLoading(false); }
-  };
-
-  const handleExport = async (type) => {
-    setExporting(prev => ({ ...prev, [type]: true }));
-    const cleanFilters = {};
-    if (filters.hospitalId) cleanFilters.hospitalId = filters.hospitalId;
-    if (filters.startDate)  cleanFilters.startDate  = filters.startDate;
-    if (filters.endDate)    cleanFilters.endDate    = filters.endDate;
-    try {
-      if (type === 'patients')    await exportPatientsCsv(cleanFilters);
-      else                         await exportPredictionsCsv(cleanFilters);
-      toast.success(`${type === 'patients' ? 'Patient Telemetry' : 'Inference Logs'} downloaded securely.`);
-    } catch { toast.error('Export routine failed. Please contact network admin.'); }
-    finally { setExporting(prev => ({ ...prev, [type]: false })); }
-  };
-
-  const anyFilter = filters.hospitalId || filters.startDate || filters.endDate;
-
-  return (
-    <div className="page-enter" style={{ maxWidth: 1200, margin: '0 auto' }}>
-      
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 32 }}>
+const ExportCard = ({
+  title, description, icon: Icon, count,
+  countLabel, color, onExport, loading,
+  delay,
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 14 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.35 }}
+    className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm flex flex-col justify-between"
+  >
+    <div>
+      <div className="flex items-start gap-4 mb-5">
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-teal-50 border border-teal-200 text-teal-700"
+        >
+          <Icon size={22} />
+        </div>
         <div>
-          <h1 className="font-heading" style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: 8 }}>Data Exchange</h1>
-          <p style={{ fontSize: 15, color: 'var(--text-muted)' }}>Securely export anonymized telemetry and inference logs from the federated network.</p>
+          <h3 className="text-base font-bold text-slate-900">{title}</h3>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">{description}</p>
         </div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="card" style={{ padding: '24px 32px', marginBottom: 32, background: 'var(--purple-light)', border: '1px solid rgba(124,58,237,0.2)', display: 'flex', gap: 20 }}>
-        <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'white', border: '1px solid rgba(124,58,237,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
-          <FiShield size={24} style={{ color: 'var(--purple)' }} />
+      <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-teal-700">
+          <Icon size={16} />
         </div>
         <div>
-          <div className="font-heading" style={{ fontSize: 18, fontWeight: 800, color: '#5B21B6', marginBottom: 6 }}>HIPAA Compliance Active</div>
-          <div style={{ fontSize: 14, color: '#4C1D95', lineHeight: 1.6 }}>All payloads are automatically anonymized before transmission. Personal Identifiable Information (PII) is securely stripped, and identifiers are pseudonymized per strict federated sharing protocols.</div>
+          <p className="text-2xl font-bold font-mono text-slate-900">
+            {count !== null ? count.toLocaleString() : '—'}
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium">{countLabel}</p>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Included CSV Fields:
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {(title === 'Patients' ? [
+            'ID', 'Patient Code', 'Hospital Node', 'Age', 'Gender',
+            'Primary Diagnosis', 'Blood Pressure', 'Cholesterol',
+            'Glucose', 'BMI', 'Smoking Status', 'Timestamp',
+          ] : [
+            'Prediction ID', 'Patient Code', 'Hospital Node', 'Condition Target',
+            'Positive/Negative', 'Confidence %', 'Assigned Risk',
+            'Active Model Checkpoint', 'Inference Date',
+          ]).map(col => (
+            <span
+              key={col}
+              className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200 font-medium"
+            >
+              {col}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={onExport}
+      disabled={loading}
+      className={`w-full h-11 rounded-xl text-sm font-semibold text-white flex items-center justify-center gap-2 transition-all shadow-sm ${
+        loading
+          ? 'bg-slate-400 cursor-not-allowed'
+          : 'bg-teal-600 hover:bg-teal-700 active:scale-[0.99]'
+      }`}
+    >
+      {loading ? (
+        <>
+          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          <span>Generating CSV Payload…</span>
+        </>
+      ) : (
+        <>
+          <FiDownload size={16} />
+          <span>Download {title} Dataset (CSV)</span>
+        </>
+      )}
+    </button>
+  </motion.div>
+);
+
+const ExportPage = () => {
+  const [hospitals, setHospitals]                     = useState([]);
+  const [selectedHospital, setSelectedHospital]       = useState('');
+  const [stats, setStats]                             = useState(null);
+  const [loading, setLoading]                         = useState(true);
+  const [exportingPatients, setExportingPatients]     = useState(false);
+  const [exportingPredictions, setExportingPredictions]= useState(false);
+  const [lastExport, setLastExport]                   = useState(null);
+
+  useEffect(() => {
+    loadInitial();
+  }, []);
+
+  useEffect(() => {
+    loadStats();
+  }, [selectedHospital]);
+
+  const loadInitial = async () => {
+    try {
+      const res = await getAllHospitals();
+      setHospitals(res?.data?.data || []);
+    } catch {
+      toast.error('Failed to load hospitals list');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const res = await getExportStats(
+        selectedHospital ? parseInt(selectedHospital) : null
+      );
+      setStats(res?.data?.data || null);
+    } catch {
+      // stats optional
+    }
+  };
+
+  const handleExportPatients = async () => {
+    setExportingPatients(true);
+    try {
+      await exportPatientsCsv(
+        selectedHospital ? parseInt(selectedHospital) : null
+      );
+      setLastExport({
+        type: 'Patients',
+        time: new Date().toLocaleTimeString(),
+        count: stats?.patientCount || 0,
+      });
+      toast.success(`Patients CSV downloaded (${stats?.patientCount || 0} records)`);
+    } catch (err) {
+      toast.error('Failed to export patients: ' + err.message);
+    } finally {
+      setExportingPatients(false);
+    }
+  };
+
+  const handleExportPredictions = async () => {
+    setExportingPredictions(true);
+    try {
+      await exportPredictionsCsv(
+        selectedHospital ? parseInt(selectedHospital) : null
+      );
+      setLastExport({
+        type: 'Predictions',
+        time: new Date().toLocaleTimeString(),
+        count: stats?.predictionCount || 0,
+      });
+      toast.success(`Predictions CSV downloaded (${stats?.predictionCount || 0} records)`);
+    } catch (err) {
+      toast.error('Failed to export predictions: ' + err.message);
+    } finally {
+      setExportingPredictions(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-50 border border-teal-200 text-teal-700">
+            <FiDownload size={20} />
+          </div>
+          Clinical Data Export
+        </h1>
+        <p className="text-sm sm:text-base text-slate-500 mt-1">
+          Export masked patient cohorts and AI diagnostic predictions in standardized CSV format
+        </p>
       </motion.div>
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.4 }} className="card" style={{ padding: '32px', marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-          <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--bg-input)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <FiFilter size={16} style={{ color: 'var(--text-secondary)' }} />
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm flex items-center gap-4 flex-wrap justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <FiFilter size={16} className="text-teal-600" />
+            <span>Target Node:</span>
           </div>
-          <div>
-            <div className="font-heading" style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>Extraction Parameters</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Filter the export payload by origin node or timeframe.</div>
-          </div>
-          {anyFilter && <span className="badge badge-blue" style={{ fontSize: 11, marginLeft: 'auto' }}>Filters Applied</span>}
+
+          <select
+            value={selectedHospital}
+            onChange={e => setSelectedHospital(e.target.value)}
+            className="h-11 rounded-xl px-4 text-sm bg-slate-50 border border-slate-200 text-slate-900 font-medium focus:outline-none focus:border-teal-500 focus:bg-white transition-all min-w-[220px]"
+          >
+            <option value="">All Hospital Nodes</option>
+            {hospitals.map(h => (
+              <option key={h.id} value={h.id}>{h.name}</option>
+            ))}
+          </select>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 20, alignItems: 'end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Target Node</label>
-            <div style={{ position: 'relative' }}>
-              <select value={filters.hospitalId} onChange={e => setFilters(p => ({ ...p, hospitalId: e.target.value }))} className="input-base" style={{ paddingBlock: 12, paddingRight: 40, appearance: 'none', cursor: 'pointer' }}>
-                <option value="">Global Network (All Nodes)</option>
-                {hospitals.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-              </select>
-              <FiChevronDown size={16} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-ghost)', pointerEvents: 'none' }} />
-            </div>
+        {stats && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-50 text-teal-800 border border-teal-200">
+              <FiUsers size={13} />
+              <span>{stats.patientCount?.toLocaleString()} Patients</span>
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+              <FiBarChart2 size={13} />
+              <span>{stats.predictionCount?.toLocaleString()} Predictions</span>
+            </span>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>Start Epoch</label>
-            <input type="date" value={filters.startDate} onChange={e => setFilters(p => ({ ...p, startDate: e.target.value }))} className="input-base" style={{ paddingBlock: 12 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>End Epoch</label>
-            <input type="date" value={filters.endDate} onChange={e => setFilters(p => ({ ...p, endDate: e.target.value }))} className="input-base" style={{ paddingBlock: 12 }} />
-          </div>
-          <button onClick={() => setFilters({ hospitalId: '', startDate: '', endDate: '' })} className="btn-secondary" style={{ padding: '12px 24px', fontSize: 14 }}>
-            Clear Config
-          </button>
+        )}
+      </div>
+
+      {/* Download Confirmation Toast Pill */}
+      {lastExport && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl px-4 py-3 bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-xs text-emerald-800"
+        >
+          <FiCheck size={16} className="text-emerald-600 flex-shrink-0" />
+          <p>
+            <strong>{lastExport.type}</strong> dataset successfully generated and downloaded ({lastExport.count} rows) at {lastExport.time}
+          </p>
+        </motion.div>
+      )}
+
+      {/* Export Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <ExportCard
+          title="Patients"
+          description="Export anonymized patient clinical profiles including vitals, lab markers, and diagnoses."
+          icon={FiUsers}
+          count={stats?.patientCount ?? null}
+          countLabel="patients available for export"
+          color="#0d9488"
+          onExport={handleExportPatients}
+          loading={exportingPatients}
+          delay={0.05}
+        />
+        <ExportCard
+          title="Predictions"
+          description="Export all AI model inference outcomes including probabilities, risk tiers, and model versions."
+          icon={FiBarChart2}
+          count={stats?.predictionCount ?? null}
+          countLabel="diagnostic predictions available"
+          color="#0284c7"
+          onExport={handleExportPredictions}
+          loading={exportingPredictions}
+          delay={0.1}
+        />
+      </div>
+
+      {/* Compliance / Privacy Card */}
+      <div className="bg-amber-50/70 rounded-2xl p-5 border border-amber-200/80 flex items-start gap-3">
+        <FiAlertCircle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs font-bold text-amber-900 mb-1">
+            HIPAA & Data Privacy Notice
+          </p>
+          <p className="text-xs text-amber-800/90 leading-relaxed">
+            Direct CSV exports are strictly intended for authenticated institutional compliance officers. In production federated learning architecture, raw patient records remain protected inside edge hospital firewalls; central nodes only receive anonymized model weights.
+          </p>
         </div>
-      </motion.div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-        {[
-          {
-            type: 'patients',
-            title: 'Patient Telemetry',
-            desc: 'Extract longitudinal health records including vitals, lab assays, and risk vectors.',
-            icon: FiDatabase,
-            accent: '#2563EB',
-            count: stats?.totalPatients,
-            countLabel: 'profiles in payload',
-            columns: PATIENTS_COLS,
-          },
-          {
-            type: 'predictions',
-            title: 'Inference Logs',
-            desc: 'Extract AI detection results, confidence intervals, and risk stratifications.',
-            icon: FiBarChart2,
-            accent: '#059669',
-            count: stats?.totalPredictions,
-            countLabel: 'traces in payload',
-            columns: PREDICTIONS_COLS,
-          },
-        ].map((card, i) => (
-          <motion.div key={card.type} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1, duration: 0.4 }}
-            className="card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: 24 }}>
-
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-              <div style={{ width: 56, height: 56, borderRadius: '16px', background: `${card.accent}12`, border: `1px solid ${card.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: 'var(--shadow-sm)' }}>
-                <card.icon size={28} style={{ color: card.accent }} />
-              </div>
-              <div>
-                <div className="font-heading" style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>{card.title}</div>
-                <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>{card.desc}</div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px', borderRadius: '16px', background: 'var(--bg-app)', border: '1px solid var(--border-default)' }}>
-              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-xs)' }}>
-                <FiUsers size={20} style={{ color: 'var(--text-secondary)' }} />
-              </div>
-              {loading ? (
-                <div style={{ flex: 1 }}><Sk h="32px" w="40%" r="8px" /></div>
-              ) : (
-                <div>
-                  <div className="font-mono" style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: card.accent, lineHeight: 1, marginBottom: 6 }}>
-                    {card.count?.toLocaleString() ?? '—'}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    {anyFilter ? 'Filtered' : 'Total'} {card.countLabel}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payload Schema</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {card.columns.map(col => (
-                  <div key={col} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: '8px', background: 'var(--bg-surface)', border: '1px solid var(--border-default)' }}>
-                    <FiCheck size={12} style={{ color: card.accent }} />
-                    <span style={{ fontSize: 12, color: 'var(--text-primary)', fontWeight: 600 }}>{col}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button onClick={() => handleExport(card.type)} disabled={exporting[card.type]}
-              style={{ marginTop: 'auto', width: '100%', padding: '16px', borderRadius: '14px', border: 'none', cursor: exporting[card.type] ? 'not-allowed' : 'pointer', background: exporting[card.type] ? `${card.accent}30` : card.accent, color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, transition: 'all 0.2s cubic-bezier(0.16,1,0.3,1)', boxShadow: exporting[card.type] ? 'none' : `0 8px 24px ${card.accent}40` }}>
-              {exporting[card.type]
-                ? <><div className="spinner" /><span>Generating Payload…</span></>
-                : <><FiDownload size={18} /><span>Extract Secure CSV</span></>}
-            </button>
-          </motion.div>
-        ))}
       </div>
     </div>
   );
-}
+};
+
+export default ExportPage;
